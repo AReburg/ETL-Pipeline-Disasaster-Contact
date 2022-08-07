@@ -38,7 +38,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
-
+from sklearn.multioutput import MultiOutputClassifier
 
 def unique(seq):
     seen = set()
@@ -64,11 +64,11 @@ def load_data(database_filepath):
     """ """
     con = sqlite3.connect(os.path.join(os.path.dirname(__file__), database_filepath))
     df = pd.read_sql_query("SELECT * FROM model_data", con)
-    df['message'] = df.apply(lambda x: tokenize(x.message), axis=1)
-
+    # df['message'] = df.apply(lambda x: tokenize(x.message), axis=1)
     X = df.message.values
-    y = df.categories.values
-    return X, y, get_all_categories(df)
+    y = df[df.columns[2:]]
+    categories = y.columns
+    return X, y, categories
 
 
 # https://practicaldatascience.co.uk/machine-learning/how-to-save-and-load-machine-learning-models-using-pickle#:~:text=To%20save%20the%20model%20all,pkl%20.
@@ -90,6 +90,22 @@ def tokenize(text):
     clean_tokens = ",".join(str(x) for x in clean_tokens)
     return clean_tokens
 
+"""
+def build_model():
+    pipeline = Pipeline([
+        ('vect', CountVectorizer(tokenizer=tokenize)),
+        ('tfidf', TfidfTransformer()),
+        ('clf', MultiOutputClassifier(RandomForestClassifier()))
+    ])
+    # parameters set to this due to reduce the size of pkl file, which were too large (600MB) for uploading to github with my previous parameters.
+    parameters = {
+        'clf__estimator__n_estimators': [10],
+        'clf__estimator__min_samples_split': [2],
+
+    }
+    model = GridSearchCV(pipeline, param_grid=parameters, n_jobs=4, verbose=2, cv=3)
+    return model
+"""
 
 def build_model():
     pipeline = Pipeline([
@@ -127,46 +143,46 @@ def display_results(cv, y_test, y_pred):
 def evaluate_model(model, X_test, Y_test, category_names):
     y_pred = model.predict(X_test)
     display_results(model, Y_test, y_pred)
+    class_report = classification_report(y_test, y_pred, target_names=category_names)
+    print(class_report)
 
 
 def save_model(model, model_filepath):
-    """  exporting the model to a pickle file"""
-    pickle.dump(model, open(os.path.join(os.path.dirname(__file__), model_filepath), 'wb'))
-
+    with open(model_filepath, 'wb') as file:
+        pickle.dump(model, file)
 
 
 def main():
     database_filepath = "../data/DisasterResponse.db"
     print('Loading data...\n    DATABASE: {}'.format(database_filepath))
-    X, Y, category_names = load_data(database_filepath)
+    X, y, category_names = load_data(database_filepath)
 
-    # df = df.iloc[0:100, :].copy()
-    X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
     print('Building model...')
     model = build_model()
 
     print('Training model...')
-    model.fit(X_train, Y_train)
+    model.fit(X_train, y_train)
 
     print('Evaluating model...')
-    evaluate_model(model, X_test, Y_test, category_names)
+    evaluate_model(model, X_test, y_test, category_names)
 
-    print('Saving model...\n    MODEL: {}'.format('test.pkl'))
-    save_model(model, 'test.pkl')
+    print('Saving model...\n    MODEL: {}'.format('test3.pkl'))
+    save_model(model, 'test3.pkl')
 
 
     if len(sys.argv) == 3:
         database_filepath, model_filepath = sys.argv[1:]
         print('Loading data...\n    DATABASE: {}'.format(database_filepath))
         X, Y, category_names = load_data(database_filepath)
-        X_train, X_test, Y_train, Y_test = train_test_split(X, Y, test_size=0.2)
+        X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2)
 
         print('Building model...')
         model = build_model()
         
         print('Training model...')
-        model.fit(X_train, Y_train)
+        model.fit(X_train, y_train)
         
         print('Evaluating model...')
         evaluate_model(model, X_test, Y_test, category_names)

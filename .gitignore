@@ -1,0 +1,8 @@
+Udacity - Assignmennt ML Pipline/
+venv 
+*.pyc 
+.DS_Store 
+.env
+csv/
+*__pycache__*
+
