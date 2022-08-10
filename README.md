@@ -22,7 +22,7 @@ plotly Dash app which is deployed [here](https://disaster-response-project.herok
 `Procfile` tells Heroku what type of process is going to run (Gunicorn web process) and the Python app entrypoint (app.py) <br>
 `/assets` this directory is to serve the CSS files and images. Generating the figures is done in `charts.py` <br>
 `/data` this folder contains the raw input `csv files`, the `database file` as well as the `process_data.py` <br>
-`/data` this folder contains the script to generate the model (`train_classifier.py`) as well as the model as a `Pickle file` <br>
+`/models` this folder contains the script to generate the model (`train_classifier.py`) as well as the model as a `Pickle file` <br>
 `.gitignore`<br>
 
 
