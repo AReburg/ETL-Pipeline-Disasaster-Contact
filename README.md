@@ -20,7 +20,7 @@ plotly Dash app which is deployed [here](https://disaster-response-project.herok
 `requirements.txt` python modules that will be installed onto the Heroku Dyno process (your linux webserver) at build <br>
 `runtime.txt` simply tells Heroku (the Gunicorn HTTP server) which Python version to use <br>
 `Procfile` tells Heroku what type of process is going to run (Gunicorn web process) and the Python app entrypoint (app.py) <br>
-`/assets` this directory is to serve the CSS files and images<br>
+`/assets` this directory is to serve the CSS files and images. Generating the figures is done in `charts.py` <br>
 `/data` this folder contains the raw input `csv files`, the `database file` as well as the `process_data.py` <br>
 `/data` this folder contains the script to generate the model (`train_classifier.py`) as well as the model as a `Pickle file` <br>
 `.gitignore`<br>
@@ -29,7 +29,13 @@ plotly Dash app which is deployed [here](https://disaster-response-project.herok
 ## Installation
 
 ### 1. Getting Started
-Clone this repo to your local machine and make sure that the app is running on the local webserver before attempting to deploy on Heroku.
+
+- Change the current working directory to the location where you want the cloned directory
+
+- Clone this repo to your local machine:
+
+`$ git clone https://github.com/AReburg/ETL-Pipeline-Disasaster-Contact`
+- Make sure that the app is running on the local webserver before attempting to deploy on Heroku.
 Setup your virtualenv (or don't) and ensure you have all the modules installed before running the app. 
 
 
@@ -40,7 +46,8 @@ Install the modules from the **requirements.txt** with pip3 or conda from a term
 `conda install --file requirements.txt` (Anaconda)
 <br>
 
-### 3. Prepare data and train the model
+## Usage
+### Prepare data and train the model
 
 Run the following commands in the project's root directory to set up your database and model.
 
@@ -48,12 +55,12 @@ Run the following commands in the project's root directory to set up your databa
 
 `python models/train_classifier.py data/DisasterResponse.db models/classifier.pkl` runs ML pipeline that trains classifier and saves
 
-### 4. Local web application
+### Local web application
 1. Run the app from your IDE direct, or from the terminal in the projects root directory: `python app.py`
 
-2. It should be visible on the browser via `http://0.0.0.0:8050`
+2. It should be visible on the browser via `http://localhost/:8050`
 
 4. Open the app in the browser and start playing around
 
 ## Authors, Acknowledgements
-[Figure-8](https://www.figure-eight.com/) made this data set available to Udacity for training purposes.
+[Appen](https://appen.com/) made this data set available to Udacity for training purposes.

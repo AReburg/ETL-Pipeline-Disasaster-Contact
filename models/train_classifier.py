@@ -31,7 +31,7 @@ from nltk.corpus import stopwords
 
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, classification_report
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
@@ -39,19 +39,6 @@ from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.multioutput import MultiOutputClassifier
-
-def unique(seq):
-    seen = set()
-    seen_add = seen.add
-    return [x for x in seq if not (x in seen or seen_add(x))]
-   # cat = [[j for j in row['categories'].split(',') if j not in cat] for index, row in df.iterrows()]
-    #for index, row in df.iterrows():
-    #    tmp =row['categories'].split(',')
-    #    for k in tmp:
-    #        if k not in cat:
-    #            cat.append(k)
-
-    # output = unique([word for line in fhand for word in line.split()])
 
 
 def get_all_categories(df):
@@ -64,6 +51,7 @@ def load_data(database_filepath):
     """ """
     con = sqlite3.connect(os.path.join(os.path.dirname(__file__), database_filepath))
     df = pd.read_sql_query("SELECT * FROM model_data", con)
+    # df = df.iloc[1:600,:]
     # df['message'] = df.apply(lambda x: tokenize(x.message), axis=1)
     X = df.message.values
     y = df[df.columns[2:]]
@@ -90,7 +78,7 @@ def tokenize(text):
     clean_tokens = ",".join(str(x) for x in clean_tokens)
     return clean_tokens
 
-"""
+
 def build_model():
     pipeline = Pipeline([
         ('vect', CountVectorizer(tokenizer=tokenize)),
@@ -101,12 +89,11 @@ def build_model():
     parameters = {
         'clf__estimator__n_estimators': [10],
         'clf__estimator__min_samples_split': [2],
-
     }
     model = GridSearchCV(pipeline, param_grid=parameters, n_jobs=4, verbose=2, cv=3)
     return model
-"""
 
+"""
 def build_model():
     pipeline = Pipeline([
         ('features', FeatureUnion([
@@ -126,7 +113,7 @@ def build_model():
     }
     cv = GridSearchCV(pipeline, param_grid=parameters)
     return cv
-
+"""
 
 
 def display_results(cv, y_test, y_pred):
@@ -140,11 +127,18 @@ def display_results(cv, y_test, y_pred):
     print("\nBest Parameters:", cv.best_params_)
 
 
-def evaluate_model(model, X_test, Y_test, category_names):
+def evaluate_model(model, X_test, y_test, category_names):
     y_pred = model.predict(X_test)
-    display_results(model, Y_test, y_pred)
-    class_report = classification_report(y_test, y_pred, target_names=category_names)
-    print(class_report)
+    try:
+        display_results(model, y_test, y_pred)
+    except:
+        print("error in display results")
+        pass
+    try:
+        class_report = classification_report(y_test, y_pred, target_names=category_names)
+        print(class_report)
+    except:
+        print("error in classification report")
 
 
 def save_model(model, model_filepath):
@@ -153,26 +147,10 @@ def save_model(model, model_filepath):
 
 
 def main():
-    database_filepath = "../data/DisasterResponse.db"
-    print('Loading data...\n    DATABASE: {}'.format(database_filepath))
-    X, y, category_names = load_data(database_filepath)
-
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
-
-    print('Building model...')
-    model = build_model()
-
-    print('Training model...')
-    model.fit(X_train, y_train)
-
-    print('Evaluating model...')
-    evaluate_model(model, X_test, y_test, category_names)
-
-    print('Saving model...\n    MODEL: {}'.format('test3.pkl'))
-    save_model(model, 'test3.pkl')
-
 
     if len(sys.argv) == 3:
+        from time import time
+        start =time()
         database_filepath, model_filepath = sys.argv[1:]
         print('Loading data...\n    DATABASE: {}'.format(database_filepath))
         X, Y, category_names = load_data(database_filepath)
@@ -185,13 +163,13 @@ def main():
         model.fit(X_train, y_train)
         
         print('Evaluating model...')
-        evaluate_model(model, X_test, Y_test, category_names)
-
+        evaluate_model(model, X_test, y_test, category_names)
 
         print('Saving model...\n    MODEL: {}'.format(model_filepath))
         save_model(model, model_filepath)
 
         print('Trained model saved!')
+        print(f"{time()-start}")
 
     else:
         print('Please provide the filepath of the disaster messages database '\
