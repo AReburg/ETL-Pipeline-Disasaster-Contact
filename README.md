@@ -1,14 +1,14 @@
 ## Disaster Response Pipeline Project
 
 ### Introduction
-In this app we analyze disaster data from Appen (formally Figure 8) to build a model for an API that classifies disaster 
+In this project messaging data from Appen has been used to build a model for an API that classifies disaster 
 messages.
 The messages that were sent during disaster events are cleaned and organized in the pipline.
 
 The project's goal is to create a machine learning pipeline to appropriately categorize messages to a disaster relief agency.
 The project includes a web app where an emergency worker can input a new message and get classified results. 
 A web app is deployed for easy interaction and displays additional data. The visualization is implemented as a 
-plotly Dash app which is deployed [here](https://disaster-response-project.herokuapp.com/)
+plotly Dash app which is deployed [here](https://emergency-response-project.herokuapp.com/)
 .<br><br>
 
 <img src="img/dash-app-screenshot.PNG" alt="Deployed dash app" width="1000"/>
@@ -17,7 +17,7 @@ plotly Dash app which is deployed [here](https://disaster-response-project.herok
 ## File Structure
 
 `app.py` where the dash app lives <br>
-`requirements.txt` python modules that will be installed onto the Heroku Dyno process (your linux webserver) at build <br>
+`requirements.txt` python modules that will be installed onto Heroku at build <br>
 `runtime.txt` simply tells Heroku (the Gunicorn HTTP server) which Python version to use <br>
 `Procfile` tells Heroku what type of process is going to run (Gunicorn web process) and the Python app entrypoint (app.py) <br>
 `/assets` this directory is to serve the CSS files and images. Generating the figures is done in `charts.py` <br>
@@ -60,7 +60,15 @@ Run the following commands in the project's root directory to set up your databa
 
 2. It should be visible on the browser via `http://localhost/:8050`
 
-4. Open the app in the browser and start playing around
+3. Open the app in the browser and start playing around
+
+### Conclusion
+Due to the highly unbalanced dataset the results are not good enough for a commercial application. 
+There are two ways to get a better outcome. Manually inspect all the messages and hand-label them for more details.
+or  build an unsupervised pipeline. The advantages of an unsupervised application are that no labeling
+is necassary and it is less time-consuming. Results will be automatically clustered.
+
+can be seen from test data visualization most of the classes (categories) are highly imbalanced. This affects model F1 prediction score. One using this project should take this into consideration and apply measures like synthetic data generation, model selection and parameters fine-tuning, etc.
 
 ## Authors, Acknowledgements
 [Appen](https://appen.com/) made this data set available to Udacity for training purposes.

@@ -11,13 +11,49 @@ import json
 import gunicorn
 import json
 import os
-from nltk.stem import WordNetLemmatizer
-from nltk.tokenize import word_tokenize
+
 import pickle
 import sqlite3
 import random
+import nltk
 from assets import charts
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from nltk.corpus import stopwords
+from sklearn import multioutput
+from sklearn.metrics import fbeta_score, make_scorer
+from sklearn.metrics import f1_score, classification_report, make_scorer
+from nltk.tokenize import word_tokenize
+from nltk.stem import WordNetLemmatizer
+from sklearn.metrics import confusion_matrix, classification_report
+from sklearn.model_selection import GridSearchCV
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline, FeatureUnion
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
+from sklearn.multioutput import MultiOutputClassifier
 
+
+class StartingVerbExtractor(BaseEstimator, TransformerMixin):
+
+    def starting_verb(self, text):
+        sentence_list = nltk.sent_tokenize(text)
+        for sentence in sentence_list:
+            pos_tags = nltk.pos_tag(tokenize(sentence))
+            first_word, first_tag = pos_tags[0]
+            if first_tag in ['VB', 'VBP'] or first_word == 'RT':
+                return True
+        return False
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X):
+        X_tagged = pd.Series(X).apply(self.starting_verb)
+        return pd.DataFrame(X_tagged)
 
 def tokenize(text):
     text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
@@ -28,8 +64,20 @@ def tokenize(text):
     for tok in tokens:
         clean_tok = lemmatizer.lemmatize(tok).lower().strip()
         clean_tokens.append(clean_tok)
-    return clean_tokens
 
+    return clean_tokens
+"""
+def tokenize(text):
+    text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
+    tokens = word_tokenize(text)
+    lemmatizer = WordNetLemmatizer()
+
+    clean_tokens = []
+    for tok in tokens:
+        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
+        clean_tokens.append(clean_tok)
+    return clean_tokens
+"""
 # load data
 with open('./models/classifier.pkl', 'rb') as f:
     model = pickle.load(f)
@@ -43,17 +91,6 @@ df2 = None
 model_input = ''
 df = pd.read_sql_query("SELECT * FROM model_data", con)
 category_all = df.columns[2:]
-
-
-styles = {
-    'pre': {
-        'border': 'thin lightgrey solid',
-        'overflowX': 'scroll'
-    },
-    'dash-graph2': {
-        'height': '700px'
-    }
-}
 
 
 app = Dash(__name__)
@@ -110,17 +147,17 @@ app.layout = html.Div([
 
 
 @app.callback(
-    Output("output1", "children"),
+    Output('output1', 'children'),
     Input("input1", "value"),
 )
 def update_output(input1):
     if not input1:
         return ''
     else:
-        model_input = tokenize(input1)
-        # print(f"{model_input} from \'{input1}\'")
-        txt = ", ".join(str(x) for x in model_input)
-        return u'{}'.format(txt)
+        tokenz = tokenize(input1)
+        # print(f"{model_input} from \'{tokenz}\'")
+        model_input = ", ".join(str(x) for x in tokenz)
+        return u'{}'.format(input1)
 
 
 @app.callback(
@@ -135,8 +172,10 @@ def update_x_timeseries(output1):
     df2 = pd.DataFrame(data={'cate': category_all_n, 'val': [1 if i in outp else 0 for i in category_all],
                              'color': [str("") for i in category_all]})
     df2['color'] = df2.apply(lambda x: charts.set_c(x['color']), axis=1) """
-    classification_labels = model.predict([model_input])[0]
+    classification_labels = model.predict([output1])[0]
     classification_results = dict(zip(df.columns[2:], classification_labels))
+    print(output1)
+    print(classification_labels)
     df_res = pd.DataFrame(data={'cate': [i.replace("_"," ").title() for i in list(classification_results.keys())],
                              'val': classification_results.values()})
     return charts.get_main_chart(df_res)
