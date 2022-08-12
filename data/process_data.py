@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import sqlite3
 import re
-
 import nltk
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
@@ -12,12 +11,7 @@ from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.corpus import stopwords
 # download necessary NLTK data
-# nltk.download('omw-1.4')
 # nltk.download(['punkt', 'wordnet'])
-#from sqlalchemy import create_engine
-# from pathlib import Path
-# cwd = Path(__file__).parent
-# dirname = cwd.parent / "data"
 
 
 def load_data(messages_filepath, categories_filepath):
@@ -41,7 +35,6 @@ def load_data(messages_filepath, categories_filepath):
     # Convert category values to 0 or 1
     for column in categories:
         categories[column] = categories[column].str[-1]
-        # convert column from string to numeric
         categories[column] = categories[column].astype(int)
     categories.replace(2, 1, inplace=True)
     # drop the original categories column from `df`
@@ -50,29 +43,15 @@ def load_data(messages_filepath, categories_filepath):
     return df
 
 
-def categorize(categories_text):
-    """ """
-    categories = []
-    for i in categories_text.split(";"):
-        if i.find("-1") > 0:
-             categories.append(i)
-    categories = ",".join(str(x).strip('-1').replace("_", " ").title() for x in categories)
-    return categories
-
-
 def clean_data(df):
     """ clean raw data """
     df = df.drop(['id', 'original'], axis=1)
-    #df['categories'] = df.apply(lambda x: categorize(x.categories), axis=1)
-    #df['categories'].replace('', np.nan, inplace=True)
-    #df.dropna(subset=['categories'], inplace=True)
-    # print(df.shape[0]) # -> there are categories rows with ""
     return df
 
 
 def save_data(df, database_filename):
     """save datafram as .db file """
-    con = sqlite3.connect(os.path.join(os.path.dirname(__file__), database_filename))
+    con = sqlite3.connect(database_filename)
     df.to_sql(name='model_data', if_exists='replace', index=False, con=con)
 
 
