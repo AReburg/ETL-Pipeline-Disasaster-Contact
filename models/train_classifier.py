@@ -1,15 +1,13 @@
-from nltk.stem.porter import PorterStemmer
 import sys
 import pickle
 import os
 import sqlite3
-import pandas as pd
-import nltk
 #nltk.download(['punkt', 'wordnet'])
 import re
 import numpy as np
 import pandas as pd
 import nltk
+from nltk.stem.porter import PorterStemmer
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
@@ -31,15 +29,9 @@ from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.multioutput import MultiOutputClassifier
 
 
-def get_all_categories(df):
-    categ = [row['categories'].split(',') for index, row in df.iterrows()]
-    all_categories = [cat.strip('-1').replace("_", " ").title() for sublist in categ for cat in sublist if cat not in categ]
-    return list(set(all_categories))
-
-
 def load_data(database_filepath):
-    """ """
-    con = sqlite3.connect(os.path.join(os.path.dirname(__file__), database_filepath))
+    """ load data from database file """
+    con = sqlite3.connect(database_filepath)
     df = pd.read_sql_query("SELECT * FROM model_data", con)
     X = df.message.values
     y = df[df.columns[2:]]
@@ -48,6 +40,7 @@ def load_data(database_filepath):
 
 
 def tokenize(text):
+    """ function to display the tokenized input needed for building the model """
     text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
     tokens = word_tokenize(text)
     lemmatizer = WordNetLemmatizer()
@@ -58,6 +51,7 @@ def tokenize(text):
         clean_tokens.append(clean_tok)
 
     return clean_tokens
+
 
 def multioutput_fscore(y_true,y_pred,beta=1):
     score_list = []
@@ -74,9 +68,8 @@ def multioutput_fscore(y_true,y_pred,beta=1):
     return  f1score
 
 
-
-
 def build_model():
+    """ build model by applying a list of transforms, classifier and a final estimator """
     pipeline = Pipeline([
         ('features', FeatureUnion([
 
@@ -96,13 +89,12 @@ def build_model():
         'features__text_pipeline__tfidf__use_idf': (True, False)
     }
 
-    # scorer = make_scorer(multioutput_fscore, greater_is_better=True)
-    # cv = GridSearchCV(pipeline, param_grid=parameters, scoring=scorer, verbose=2, n_jobs=-1)
     cv = GridSearchCV(pipeline, param_grid=parameters, verbose=2)
     return cv
 
 
 def display_results(cv, y_test, y_pred):
+    """ check how well the model performs. """
     labels = np.unique(y_pred)
     confusion_mat = confusion_matrix(y_test, y_pred, labels=labels)
     accuracy = (y_pred == y_test).mean()
@@ -114,20 +106,15 @@ def display_results(cv, y_test, y_pred):
 
 
 def evaluate_model(model, X_test, y_test, category_names):
+    """ evaluate how well the given model performs with test data set """
     y_pred = model.predict(X_test)
-    try:
-        display_results(model, y_test, y_pred)
-    except:
-        print("error in display results")
-        pass
-    try:
-        class_report = classification_report(y_test, y_pred, target_names=category_names)
-        print(class_report)
-    except:
-        print("error in classification report")
+
+    class_report = classification_report(y_test, y_pred, target_names=category_names)
+    print(class_report)
 
 
 def save_model(model, model_filepath):
+    """ save model as a .pkl file under a give file path."""
     with open(model_filepath, 'wb') as file:
         pickle.dump(model, file)
 
@@ -135,16 +122,17 @@ def save_model(model, model_filepath):
 def main():
 
     if len(sys.argv) == 3:
-        from time import time
-        start =time()
+
         database_filepath, model_filepath = sys.argv[1:]
+
         print('Loading data...\n    DATABASE: {}'.format(database_filepath))
         X, Y, category_names = load_data(database_filepath)
+
         X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=0.2)
 
         print('Building model...')
         model = build_model()
-        
+
         print('Training model...')
         model.fit(X_train, y_train)
         
@@ -155,7 +143,6 @@ def main():
         save_model(model, model_filepath)
 
         print('Trained model saved!')
-        print(f"{time()-start}")
 
     else:
         print('Please provide the filepath of the disaster messages database '\

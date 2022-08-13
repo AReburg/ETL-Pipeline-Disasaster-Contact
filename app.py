@@ -1,20 +1,13 @@
 # -*- coding: utf-8 -*-
 from dash import Dash, dcc, html, Input, Output
 import plotly.express as px
-from urllib.request import urlopen
 import pandas as pd
-import numpy as np
 import re
-import plotly.express as px
-import plotly.graph_objects as go
 import json
 import gunicorn
-import json
 import os
-
 import pickle
 import sqlite3
-import random
 import nltk
 from assets import charts
 from nltk.tokenize import word_tokenize
@@ -36,26 +29,14 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.multioutput import MultiOutputClassifier
 
-class StartingVerbExtractor(BaseEstimator, TransformerMixin):
-
-    def starting_verb(self, text):
-        sentence_list = nltk.sent_tokenize(text)
-        for sentence in sentence_list:
-            pos_tags = nltk.pos_tag(tokenize(sentence))
-            first_word, first_tag = pos_tags[0]
-            if first_tag in ['VB', 'VBP'] or first_word == 'RT':
-                return True
-        return False
-
-    def fit(self, X, y=None):
-        return self
-
-    def transform(self, X):
-        X_tagged = pd.Series(X).apply(self.starting_verb)
-        return pd.DataFrame(X_tagged)
+# load db file
+database_filepath = "./data/DisasterResponse.db"
+con = sqlite3.connect(os.path.join(os.path.dirname(__file__), database_filepath))
+df = pd.read_sql_query("SELECT * FROM model_data", con)
 
 
 def tokenize(text):
+    """ function to display the tokenized input needed for building the model """
     text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
     tokens = word_tokenize(text)
     lemmatizer = WordNetLemmatizer()
@@ -67,22 +48,19 @@ def tokenize(text):
 
     return clean_tokens
 
-# load data
+
+# load model from .pkl file
 with open('./models/classifier.pkl', 'rb') as f:
     model = pickle.load(f)
 
 
-database_filepath = "./data/DisasterResponse.db"
-con = sqlite3.connect(os.path.join(os.path.dirname(__file__), database_filepath))
-df = pd.read_sql_query("SELECT * FROM model_data", con)
-category_all = df.columns[2:]
-
-
+# set-up webpage layout to display cool visuals and receives user input text for model
+# render web page with plotly graphs
 app = Dash(__name__)
 server = app.server
 
 app.layout = html.Div([
-
+    # left half of the web page
     html.Div([
         html.Div([html.Img(src=app.get_asset_url('logo.png'), height='25 px', width='auto')],
                 className = 'col-2', style={'align-items': 'center', 'padding-top' : '1%', 'height' : 'auto'}),
@@ -92,13 +70,13 @@ app.layout = html.Div([
         html.P("""This ML-model is trained on messages that were send during natural disasters. 
         Classifying these messages, would allow a disaster relief agency to take the appropriate measures. 
         There are 36 pre-defined categories such as "Aid related", "Search and Rescue", "Shelter" or "Medical Help". 
-        Use the text input on the left to enter a message for classification."""),
+        Use the text input on the right to enter a message for classification."""),
         html.Div([f"The data set consists of {df.shape[0]} samples:"], className='text-padding'),
         html.Div([dcc.Graph(figure=charts.get_pie_chart(df), config={'displayModeBar': False})], style={'width': '250px', 'align-items': 'center'}),
         html.Div([dcc.Graph(figure=charts.get_category_chart(df), config={'displayModeBar': False})]),
         ], className='four columns div-user-controls'),
 
-
+    # right half of the web page
     html.Div([
         html.Div(
             [
@@ -108,7 +86,7 @@ app.layout = html.Div([
                 html.H4("Enter a message and hit enter"),
 
                 html.Div(
-                    children=[dcc.Input(id="input1", type="text", placeholder="", debounce=True,
+                    children=[dcc.Input(id="input_text", type="text", placeholder="", debounce=True,
                                         style={'border-radius': '8px', #'border': '4px solid red'
                                             'background-color': '#31302f', 'color': 'white',
                                             'width': '100%',
@@ -116,13 +94,13 @@ app.layout = html.Div([
                     style=dict(display='flex', justifyContent='center')
                 ),
                 html.Br(),
-                html.Div(id="output1"),
+                html.Div(id="tokenized_text"),
             ]
         ),
         html.Br(),
         html.Br(),
         html.Br(),
-        html.H2(f"Categorization based on the {len(category_all)} pre-defined topics"),
+        html.H2(f"Categorization based on the {len(df.columns[2:])} pre-defined topics"),
         html.Br(),
         html.Div([dcc.Graph(id='result-histogram', figure={}, config={'displayModeBar': False},
                             style={'height': '900px', 'width': '1200px'})], className='dash-graph')
@@ -131,33 +109,25 @@ app.layout = html.Div([
 
 
 @app.callback(
-    [Output('result-histogram', 'figure'), Output('output1', 'children')],
-    Input("input1", "value"))
-def update_categories(input1):
-    # use model to predict classification for query
-    """ used for testing:
-    outp = [random.randint(0,1) for i in category_all]
-    outp = [random.choice(category_all) for i in outp if i==1]
-    category_all_n = [i.replace("_", " ").title() for i in category_all]
-    df2 = pd.DataFrame(data={'cate': category_all_n, 'val': [1 if i in outp else 0 for i in category_all],
-                             'color': [str("") for i in category_all]})
-    df2['color'] = df2.apply(lambda x: charts.set_c(x['color']), axis=1) """
-
-    if input1 == '' or input1 is None:
+    [Output('result-histogram', 'figure'), Output('tokenized_text', 'children')],
+    Input("input_text", "value"))
+def update_categories(input_text):
+    """ use model to predict classification for input text query """
+    if input_text == '' or input_text is None:
         df_res = pd.DataFrame(data={'cate': [i.replace("_", " ").title() for i in df.columns[2:]],
                                     'val': [0 for _ in df.columns[2:]]})
         tokenized_text = ""
 
     else:
-        classification_labels = model.predict([input1])[0]
+        classification_labels = model.predict([input_text])[0]
         classification_results = dict(zip(df.columns[2:], classification_labels))
         df_res = pd.DataFrame(data={'cate': [i.replace("_"," ").title() for i in list(classification_results.keys())],
                                  'val': classification_results.values()})
-        tokenized_text = ", ".join(str(x) for x in tokenize(input1))
+        tokenized_text = ", ".join(str(x) for x in tokenize(input_text))
 
     return [charts.get_main_chart(df_res), tokenized_text]
 
 
 if __name__ == "__main__":
-    app.run_server(debug=True)
+    app.run_server(debug=False)
 
