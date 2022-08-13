@@ -30,9 +30,8 @@ plotly Dash app which is deployed [here](https://emergency-response-project.hero
 
 ### 1. Getting Started
 
-- Change the current working directory to the location where you want the cloned directory
-
-- Clone this repo to your local machine:
+- Change the current directory to the location where you want to clone the repository and clone this repo to
+your local machine:
 
 `$ git clone https://github.com/AReburg/ETL-Pipeline-Disasaster-Contact`
 - Make sure that the app is running on the local webserver before attempting to deploy on Heroku.
@@ -66,9 +65,10 @@ Run the following commands in the project's root directory to set up your databa
 Due to the highly unbalanced dataset the results are not good enough for a commercial application. 
 There are two ways to get a better outcome. Manually inspect all the messages and hand-label them for more details.
 or  build an unsupervised pipeline. The advantages of an unsupervised application are that no labeling
-is necassary and it is less time-consuming. Results will be automatically clustered.
+is necassary and it is less time-consuming -results will be automatically clustered.
 
-can be seen from test data visualization most of the classes (categories) are highly imbalanced. This affects model F1 prediction score. One using this project should take this into consideration and apply measures like synthetic data generation, model selection and parameters fine-tuning, etc.
+#### Model evaluation
+<img src="img/model_evaluation.PNG" alt="Deployed dash app" width="350"/>
 
 ## Authors, Acknowledgements
 [Appen](https://appen.com/) made this data set available to Udacity for training purposes.
