@@ -36,7 +36,6 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_extraction.text import CountVectorizer, TfidfTransformer
 from sklearn.multioutput import MultiOutputClassifier
 
-
 class StartingVerbExtractor(BaseEstimator, TransformerMixin):
 
     def starting_verb(self, text):
@@ -55,6 +54,7 @@ class StartingVerbExtractor(BaseEstimator, TransformerMixin):
         X_tagged = pd.Series(X).apply(self.starting_verb)
         return pd.DataFrame(X_tagged)
 
+
 def tokenize(text):
     text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
     tokens = word_tokenize(text)
@@ -66,18 +66,7 @@ def tokenize(text):
         clean_tokens.append(clean_tok)
 
     return clean_tokens
-"""
-def tokenize(text):
-    text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
-    tokens = word_tokenize(text)
-    lemmatizer = WordNetLemmatizer()
 
-    clean_tokens = []
-    for tok in tokens:
-        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
-        clean_tokens.append(clean_tok)
-    return clean_tokens
-"""
 # load data
 with open('./models/classifier.pkl', 'rb') as f:
     model = pickle.load(f)
@@ -85,10 +74,6 @@ with open('./models/classifier.pkl', 'rb') as f:
 
 database_filepath = "./data/DisasterResponse.db"
 con = sqlite3.connect(os.path.join(os.path.dirname(__file__), database_filepath))
-
-
-df2 = None
-model_input = ''
 df = pd.read_sql_query("SELECT * FROM model_data", con)
 category_all = df.columns[2:]
 
@@ -109,18 +94,17 @@ app.layout = html.Div([
         There are 36 pre-defined categories such as "Aid related", "Search and Rescue", "Shelter" or "Medical Help". 
         Use the text input on the left to enter a message for classification."""),
         html.Div([f"The data set consists of {df.shape[0]} samples:"], className='text-padding'),
-        # html.Br(),
-        html.Div([dcc.Graph(figure=charts.get_pie_chart(df)),], style={'width': '250px', 'align-items': 'center'}),
-        html.Div([dcc.Graph(figure=charts.get_category_chart(df))], ),
+        html.Div([dcc.Graph(figure=charts.get_pie_chart(df), config={'displayModeBar': False})], style={'width': '250px', 'align-items': 'center'}),
+        html.Div([dcc.Graph(figure=charts.get_category_chart(df), config={'displayModeBar': False})]),
         ], className='four columns div-user-controls'),
 
 
     html.Div([
         html.Div(
-        [
-        html.Br(),
-        html.Br(),
-        html.Br(),
+            [
+            html.Br(),
+            html.Br(),
+            html.Br(),
                 html.H4("Enter a message and hit enter"),
 
                 html.Div(
@@ -147,23 +131,9 @@ app.layout = html.Div([
 
 
 @app.callback(
-    Output('output1', 'children'),
-    Input("input1", "value"),
-)
-def update_output(input1):
-    if not input1:
-        return ''
-    else:
-        tokenz = tokenize(input1)
-        # print(f"{model_input} from \'{tokenz}\'")
-        model_input = ", ".join(str(x) for x in tokenz)
-        return u'{}'.format(input1)
-
-
-@app.callback(
-    Output('result-histogram', 'figure'),
-    Input("output1", "children"))
-def update_x_timeseries(output1):
+    [Output('result-histogram', 'figure'), Output('output1', 'children')],
+    Input("input1", "value"))
+def update_categories(input1):
     # use model to predict classification for query
     """ used for testing:
     outp = [random.randint(0,1) for i in category_all]
@@ -172,13 +142,20 @@ def update_x_timeseries(output1):
     df2 = pd.DataFrame(data={'cate': category_all_n, 'val': [1 if i in outp else 0 for i in category_all],
                              'color': [str("") for i in category_all]})
     df2['color'] = df2.apply(lambda x: charts.set_c(x['color']), axis=1) """
-    classification_labels = model.predict([output1])[0]
-    classification_results = dict(zip(df.columns[2:], classification_labels))
-    print(output1)
-    print(classification_labels)
-    df_res = pd.DataFrame(data={'cate': [i.replace("_"," ").title() for i in list(classification_results.keys())],
-                             'val': classification_results.values()})
-    return charts.get_main_chart(df_res)
+
+    if input1 == '' or input1 is None:
+        df_res = pd.DataFrame(data={'cate': [i.replace("_", " ").title() for i in df.columns[2:]],
+                                    'val': [0 for _ in df.columns[2:]]})
+        tokenized_text = ""
+
+    else:
+        classification_labels = model.predict([input1])[0]
+        classification_results = dict(zip(df.columns[2:], classification_labels))
+        df_res = pd.DataFrame(data={'cate': [i.replace("_"," ").title() for i in list(classification_results.keys())],
+                                 'val': classification_results.values()})
+        tokenized_text = ", ".join(str(x) for x in tokenize(input1))
+
+    return [charts.get_main_chart(df_res), tokenized_text]
 
 
 if __name__ == "__main__":
